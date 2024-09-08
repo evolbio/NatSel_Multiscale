@@ -1,6 +1,6 @@
 module MLS
 using DifferentialEquations
-export discrete_dq, continuous_dq
+export discrete_dq, continuous_dq, qt
 
 s(m1, m2) = m1 - m2
 s(m1, m2, dt) = exp(m1*dt) - exp(m2*dt)
@@ -9,6 +9,7 @@ wbar(q, m1, m2, dt) = q*exp(m1*dt) + (1 - q)*exp(m2*dt)
 
 dq(q, m1, m2, dt) = s(m1, m2, dt) * q*(1-q) / wbar(q, m1, m2, dt)
 dq(q, m1, m2) = s(m1, m2) * q * (1-q)
+qt(q, m1, m2, t) = discrete_dq(q,m1,m2,t,t)[2][2]
 
 function discrete_dq(q,m1,m2,dt,T)
 	steps = 0:dt:T
