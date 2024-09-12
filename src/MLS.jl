@@ -1,6 +1,48 @@
 module MLS
-using DifferentialEquations, Distributions, Integrals, Printf
-export discrete_dq, continuous_dq, qt
+using DifferentialEquations, Distributions, Printf
+export discrete_dq, continuous_dq, qt, d_qbar_prime
+
+## Code for calculating qbar', shows predicted optimum is correct 
+# p is probability of group with that has freq q
+# test corr: calc_corr(corr_binomial(N, M, qbar),(0:N)/N)
+
+# driver to calculate change in qbar relative to predicted optimum
+function d_qbar_prime(N, qbar, κ, s, r_target; stepsz = 0.01, pts = 2)
+	M, r = find_M(N, r_target)
+	x1 = z_star(κ, r, s);
+	rng = stepsz * pts
+	out = [qbar_prime(qbar,N,M,x1,x1+d,s,r,κ) - qbar for d in -rng:stepsz:rng]
+	return out, x1, M, r
+end
+
+
+calc_corr(p,q) = (sum(p.*q.^2) - sum(p.*q)^2) / (sum(p.*q)*(1-sum(p.*q)))
+corr_binomial(N, M, qb) = 
+	[qb*pdf(Binomial(N-M,qb),k-M)+(1-qb)*pdf(Binomial(N-M,qb),k) for k in 0:N]
+# x_i = e^m_i, assuming t = 1 throughout
+y_local(q, x1, x2) = q*x1 + (1 .- q)*x2
+z_star(κ, r, s) = κ*(1-r)/(1-r+r*s)
+
+function find_M(N::Int, target_r::Float64)
+	approx_M = 0.5 * (1 + sqrt(1 - 4 * N + 4 * N^2 * target_r))
+	M = Int(round(approx_M))
+	r = (N + M^2 - M) / N^2
+	return M, r 
+end
+
+function qbar_prime(qbar, N, M, x1, x2, s, r, κ)
+	p = corr_binomial(N, M, qbar)	# freq of groups with q
+	q = collect(0:N) / N			# values of q for groups
+	y = y_local(q, x1, x2)
+	ybar = sum(p.*y)
+	kys = (κ .- y).^s
+	α = x1 - x2
+	q_prime = @. q + α * q * (1 - q) / y
+	return sum(p .* q_prime .* kys) / (κ-ybar)^s
+end
+
+# Calculate freq change in haploid model with two competitors
+# Can use for within group changes
 
 s(m1, m2) = m1 - m2
 s(m1, m2, dt) = exp(m1*dt) - exp(m2*dt)
@@ -25,43 +67,6 @@ end
 function continuous_dq(q0,m1,m2,T)
 	prob = ODEProblem((u,p,t) -> dq(u,m1,m2), q0, (0,T))
 	sol = solve(prob, Tsit5(), reltol = 1e-12, abstol = 1e-12)
-end
-
-function qbar_prime(qbar, m1, m2, s, r, k)
-	g = (1-r)/r
-	a = g*qbar
-	b = g*(1-qbar)
-	T = 1
-	prob = IntegralProblem((q,p) -> pdf(Beta(a,b),q)*wbar(q,m1,m2,T), (0,1))
-	soln = solve(prob, QuadGKJL())
-	ybar = soln.u
-	soln.resid > 1e-7 ? println("ybar resid = ", soln.resid) : nothing
-	prob = IntegralProblem((q,p) -> 
-		pdf(Beta(a,b),q)*discrete_dq(q,m1,m2,T,T)[2][2]*(k-wbar(q,m1,m2,T))^s,
-		(0,1))
-	soln = solve(prob, QuadGKJL())
-	soln.resid > 1e-7 ? println("qbar_prime resid = ", soln.resid) : nothing
-	return soln.u / (k-ybar)^s
-end
-
-############
-
-function qbar_prime_old(qbar, m1, m2, T, r)
-	g = (1-r)/r
-	a = g*qbar
-	b = g*(1-qbar)
-	# set k so that m* = s = 1/T
-	k = ℯ*(1-r+r/T)/(1-r)
-	prob = IntegralProblem((q,p) -> pdf(Beta(a,b),q)*wbar(q,m1,m2,T), (0,1))
-	soln = solve(prob, QuadGKJL())
-	ybar = soln.u
-	soln.resid > 1e-7 ? println("ybar resid = ", soln.resid) : nothing
-	prob = IntegralProblem((q,p) -> 
-			pdf(Beta(a,b),q)*discrete_dq(q,m1,m2,T,T)[2][2]*(k-wbar(q,m1,m2,T)),
-			(0,1))
-	soln = solve(prob, QuadGKJL())
-	soln.resid > 1e-7 ? println("qbar_prime resid = ", soln.resid) : nothing
-	return soln.u / (k-ybar)
 end
 
 end # module MLS
