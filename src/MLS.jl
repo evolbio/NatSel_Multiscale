@@ -1,20 +1,19 @@
 module MLS
 using DifferentialEquations, Distributions, Printf
-export discrete_dq, continuous_dq, qt, d_qbar_prime
+export discrete_dq, continuous_dq, qt, d_qbar, dynamics
 
 ## Code for calculating qbar', shows predicted optimum is correct 
 # p is probability of group with that has freq q
 # test corr: calc_corr(corr_binomial(N, M, qbar),(0:N)/N)
 
 # driver to calculate change in qbar relative to predicted optimum
-function d_qbar_prime(N, qbar, κ, s, r_target; stepsz = 0.01, pts = 2)
+function d_qbar(N, qbar, κ, s, r_target; stepsz = 0.01, pts = 2)
 	M, r = find_M(N, r_target)
 	x1 = z_star(κ, r, s);
 	rng = stepsz * pts
 	out = [qbar_prime(qbar,N,M,x1,x1+d,s,r,κ) - qbar for d in -rng:stepsz:rng]
 	return out, x1, M, r
 end
-
 
 calc_corr(p,q) = (sum(p.*q.^2) - sum(p.*q)^2) / (sum(p.*q)*(1-sum(p.*q)))
 corr_binomial(N, M, qb) = 
@@ -39,6 +38,15 @@ function qbar_prime(qbar, N, M, x1, x2, s, r, κ)
 	α = x1 - x2
 	q_prime = @. q + α * q * (1 - q) / y
 	return sum(p .* q_prime .* kys) / (κ-ybar)^s
+end
+
+function dynamics(qbar, N, M, x1, x2, s, r, κ, steps)
+	history = zeros(steps+1)
+	history[1] = qbar
+	for i in 2:(steps+1)
+		history[i] = qbar_prime(history[i-1], N, M, x1, x2, s, r, κ)
+	end
+	return history
 end
 
 # Calculate freq change in haploid model with two competitors
