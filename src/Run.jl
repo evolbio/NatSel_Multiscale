@@ -32,6 +32,21 @@ dynamics(0.7, N, M, x1-0.8749685628, x1+1.1, s, r, κ, 100000)[end]
 # converges to 0.20000000003718574, suggested that is an attractor
 dynamics(0.03, N, M, x1-0.8749685628, x1+1.1, s, r, κ, 100000)[end]
 # converges to 0.20000000003714702
+
+########################################################
+## Dynamics of zbar over patches ignoring group size, shows w/in group dyn
+N = 1000;
+t_incr = 100;
+κ = 100;
+
+qbar = 0.9;
+s = 0.9;
+r_target = 0.9;
+_, x1, M, r = d_qbar(N, qbar, κ, s, r_target);
+zbarw = cycle_dynamics(qbar, N, M, x1, κ, s, r, κ, 2; t_incr=t_incr);
+
+plot((1:length(zbarw[:]))/(t_incr+1), zbarw[:], legend=:none)
+
 ########################################################
 ## Frequency change analysis within a single patch
 

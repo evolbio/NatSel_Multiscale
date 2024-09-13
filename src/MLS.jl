@@ -1,6 +1,7 @@
 module MLS
 using DifferentialEquations, Distributions, Printf
-export discrete_dq, continuous_dq, qt, d_qbar, dynamics
+export discrete_dq, continuous_dq, qt, d_qbar, dynamics,
+		cycle_dynamics
 
 ## Code for calculating qbar', shows predicted optimum is correct 
 # p is probability of group with that has freq q
@@ -30,8 +31,8 @@ function find_M(N::Int, target_r::Float64)
 end
 
 function qbar_prime(qbar, N, M, x1, x2, s, r, κ)
-	p = corr_binomial(N, M, qbar)	# freq of groups with q
-	q = collect(0:N) / N			# values of q for groups
+	p = corr_binomial(N, M, clamp(qbar,0,1))	# freq of groups with q
+	q = collect(0:N) / N						# values of q for groups
 	y = y_local(q, x1, x2)
 	ybar = sum(p.*y)
 	kys = (κ .- y).^s
@@ -47,6 +48,28 @@ function dynamics(qbar, N, M, x1, x2, s, r, κ, steps)
 		history[i] = qbar_prime(history[i-1], N, M, x1, x2, s, r, κ)
 	end
 	return history
+end
+
+function cycle_dynamics(qbar, N, M, x1, x2, s, r, κ, steps; t_incr=100)
+	# get the frequencies at the start of each cycle
+	q0 = dynamics(qbar, N, M, x1, x2, s, r, κ, steps)
+	# col of matrix is the ave within grp trait over time for given cycle
+	zbarw = zeros(t_incr+1,steps+1)
+	tsteps = 0:(1/t_incr):1
+	qi = collect(0:N) / N			# values of q for groups
+	αt = [x1^t - x2^t for t in tsteps]
+	yt = [q*x1^t + (1-q)*x2^t for t in tsteps, q in qi]
+	qt = [qi[j] + (αt[i]*qi[j]*(1-qi[j]))/yt[i,j]
+			for j in 1:(N+1), i in 1:(t_incr+1)]
+	zt = [qt[j,i]*x1 + (1-qt[j,i])*x2
+			for j in 1:(N+1), i in 1:(t_incr+1)]
+	for j in 1:steps+1
+		p = corr_binomial(N, M, clamp(q0[j],0,1))	# freq of groups with qi
+		for i in 1:(t_incr+1)
+			zbarw[i,j] = sum(p .* zt[:,i])
+		end
+	end
+	return zbarw
 end
 
 # Calculate freq change in haploid model with two competitors
