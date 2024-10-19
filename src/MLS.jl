@@ -1,7 +1,15 @@
 module MLS
-using DifferentialEquations, Distributions, Printf
+using DifferentialEquations, Distributions, Printf, Plots
 export discrete_dq, continuous_dq, qt, d_qbar, dynamics,
 		cycle_dynamics
+
+####################################################################
+# colors, based on standard Mathematica palette
+
+mma = [RGB(0.3684,0.50678,0.7098),RGB(0.8807,0.61104,0.14204),
+			RGB(0.56018,0.69157,0.19489), RGB(0.92253,0.38563,0.20918)];
+
+####################################################################
 
 ## Code for calculating qbar', shows predicted optimum is correct 
 # p is probability of group with that has freq q
@@ -35,10 +43,11 @@ function qbar_prime(qbar, N, M, x1, x2, s, r, κ)
 	q = collect(0:N) / N						# values of q for groups
 	y = y_local(q, x1, x2)
 	ybar = sum(p.*y)
-	kys = (κ .- y).^s
+	wq = (κ .- y).^s
+	wbar = sum(p .* wq)
 	α = x1 - x2
 	q_prime = @. q + α * q * (1 - q) / y
-	return sum(p .* q_prime .* kys) / (κ-ybar)^s
+	return sum(p .* q_prime .* wq) / wbar
 end
 
 function dynamics(qbar, N, M, x1, x2, s, r, κ, steps)
@@ -50,7 +59,8 @@ function dynamics(qbar, N, M, x1, x2, s, r, κ, steps)
 	return history
 end
 
-function cycle_dynamics(qbar, N, M, x1, x2, s, r, κ, steps; t_incr=100)
+function cycle_dynamics(qbar, N, M, x1, x2, s, r, κ, steps;
+			t_incr=100, show_plot=true)
 	# get the frequencies at the start of each cycle
 	q0 = dynamics(qbar, N, M, x1, x2, s, r, κ, steps)
 	# col of matrix is the ave within grp trait over time for given cycle
@@ -69,7 +79,15 @@ function cycle_dynamics(qbar, N, M, x1, x2, s, r, κ, steps; t_incr=100)
 			zbarw[i,j] = sum(p .* zt[:,i])
 		end
 	end
-	return zbarw
+	pl = nothing
+	if show_plot
+		pl = plot((1:length(zbarw[:]))/(t_incr+1), zbarw[:], legend=:none,
+			color=mma[1], lw=2, xlabel="Rounds of within-group competition",
+			ylabel="Average trait value within groups", guidefontsize=13,
+			tickfontsize=11)
+		display(pl) 
+	end
+	return zbarw, pl
 end
 
 # Calculate freq change in haploid model with two competitors

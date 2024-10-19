@@ -41,11 +41,11 @@ t_incr = 100;
 
 qbar = 0.9;
 s = 0.9;
-r_target = 0.9;
+r_target = 0.95;
 _, x1, M, r = d_qbar(N, qbar, κ, s, r_target);
-zbarw = cycle_dynamics(qbar, N, M, x1, κ, s, r, κ, 2; t_incr=t_incr);
+zbarw, pl = cycle_dynamics(qbar, N, M, x1, κ, s, r, κ, 3; t_incr=t_incr);
 
-plot((1:length(zbarw[:]))/(t_incr+1), zbarw[:], legend=:none)
+savefig(pl, "/Users/steve/Desktop/temporalDyn.pdf")
 
 ########################################################
 ## Frequency change analysis within a single patch
