@@ -1,7 +1,7 @@
 module MLS
 using DifferentialEquations, Distributions, Printf, Plots
 export discrete_dq, continuous_dq, qt, d_qbar, dynamics,
-		cycle_dynamics
+		cycle_dynamics, mma
 
 ####################################################################
 # colors, based on standard Mathematica palette

@@ -15,6 +15,19 @@ r_target = 0.95;
 _, x1, M, r = d_qbar(N, qbar, κ, s, r_target);
 zbarw, pl = cycle_dynamics(qbar, N, M, x1, κ, s, r, κ, 3; t_incr=t_incr);
 
+#y = zeros(4)
+s_array = reverse(push!(collect(0.1:0.2:0.5),0.9));
+for i in 1:4
+	zbarw, _ = cycle_dynamics(qbar, N, M, x1, κ, s_array[i], r, κ, 3;
+					t_incr=t_incr, show_plot=false)
+	#y[i] = zbarw[1,2]
+	scatter!(pl,[1.005],[zbarw[1,2]],color=mma[i],marker=:circle,markersize=5,
+			markerstrokecolor=mma[i])
+	annotate!(pl, 0.85, zbarw[1,2], text(string(s_array[i]), 10))
+	#plot!(pl, (1:length(zbarw[:]))/(t_incr+1), zbarw[:], color=mma[i], lw=2)
+end
+display(pl)
+
 # Adjust path for output for local computer
 savefig(pl, "/Users/steve/Desktop/temporalDyn.pdf")
 
